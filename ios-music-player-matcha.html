@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS Music Player - Matcha Green</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e0f0d9, #c8e0b4);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 100%;
+            width: 375px;
+            height: 700px;
+            box-shadow: 0 15px 40px rgba(106, 141, 73, 0.3);
+            border-radius: 40px;
+            overflow: hidden;
+            background: white;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-bar {
+            height: 44px;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 14px;
+            color: #5a7240;
+            font-weight: 600;
+        }
+
+        .time {
+            position: absolute;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Main content area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Header styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding: 0 5px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c3e22;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-icons i {
+            font-size: 20px;
+            color: #5a7240;
+        }
+
+        /* Matcha green color palette */
+        :root {
+            --matcha-primary: #8da860;
+            --matcha-secondary: #a8c97f;
+            --matcha-light: #d0e7b2;
+            --matcha-dark: #5a7240;
+            --matcha-accent: #9db86e;
+        }
+
+        /* Now Playing Screen */
+        .now-playing {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .album-art-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0 30px;
+        }
+
+        .album-art {
+            width: 280px;
+            height: 280px;
+            background: linear-gradient(135deg, var(--matcha-primary), var(--matcha-secondary));
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(141, 173, 103, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .album-art img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .album-art::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.05));
+        }
+
+        .song-info {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .song-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #2c3e22;
+        }
+
+        .artist-name {
+            font-size: 18px;
+            color: var(--matcha-dark);
+            font-weight: 500;
+        }
+
+        .progress-container {
+            margin: 0 10px 40px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #e5ebdd;
+            border-radius: 2px;
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .progress {
+            height: 100%;
+            width: 40%;
+            background: linear-gradient(to right, var(--matcha-primary), var(--matcha-accent));
+            border-radius: 2px;
+        }
+
+        .progress-thumb {
+            width: 14px;
+            height: 14px;
+            background: var(--matcha-accent);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 40%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 5px rgba(90, 114, 64, 0.3);
+        }
+
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--matcha-dark);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+            border: none;
+            color: var(--matcha-dark);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .play-btn {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--matcha-primary), var(--matcha-accent));
+            color: white;
+            box-shadow: 0 5px 15px rgba(141, 173, 103, 0.4);
+        }
+
+        .play-btn i {
+            font-size: 26px;
+        }
+
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .volume-icon {
+            color: var(--matcha-dark);
+            font-size: 18px;
+        }
+
+        .volume-bar {
+            flex: 1;
+            height: 4px;
+            background: #e5ebdd;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .volume-level {
+            height: 100%;
+            width: 70%;
+            background: linear-gradient(to right, var(--matcha-primary), var(--matcha-accent));
+            border-radius: 2px;
+        }
+
+        .extra-controls {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .extra-btn {
+            background: transparent;
+            border: none;
+            color: var(--matcha-dark);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .extra-btn.active {
+            color: var(--matcha-primary);
+        }
+
+        /* Library Screen */
+        .library {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: #f5f8f0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 25px;
+        }
+
+        .search-bar i {
+            color: var(--matcha-dark);
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            color: var(--matcha-dark);
+        }
+
+        .search-bar input::placeholder {
+            color: #a1b88a;
+        }
+
+        .song-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .song-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .song-item:hover {
+            background: #f5f8f0;
+        }
+
+        .song-thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--matcha-primary), var(--matcha-secondary));
+            margin-right: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .song-details {
+            flex: 1;
+        }
+
+        .list-song-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #2c3e22;
+            font-size: 17px;
+        }
+
+        .list-artist-name {
+            font-size: 15px;
+            color: var(--matcha-dark);
+        }
+
+        .song-options {
+            padding: 10px;
+            color: var(--matcha-dark);
+            font-size: 18px;
+        }
+
+        /* Browse Screen */
+        .browse {
+            display: none;
+            flex-direction: column;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-top: 10px;
+        }
+
+        .category-card {
+            background: #f5f8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            height: 150px;
+            position: relative;
+        }
+
+        .category-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .category-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 12px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* Search Screen */
+        .search {
+            display: none;
+            flex-direction: column;
+        }
+
+        .search-header {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #2c3e22;
+        }
+
+        .recent-searches {
+            margin-top: 20px;
+        }
+
+        .search-item {
+            padding: 14px 0;
+            border-bottom: 1px solid #e5ebdd;
+            font-size: 17px;
+            color: var(--matcha-dark);
+            display: flex;
+            align-items: center;
+        }
+
+        .search-item i {
+            margin-right: 12px;
+            color: var(--matcha-dark);
+        }
+
+        /* Profile Screen */
+        .profile {
+            display: none;
+            flex-direction: column;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-pic {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--matcha-primary), var(--matcha-accent));
+            margin-right: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .profile-info h2 {
+            font-size: 24px;
+            color: #2c3e22;
+            margin-bottom: 5px;
+        }
+
+        .profile-info p {
+            color: var(--matcha-dark);
+            font-size: 16px;
+        }
+
+        .stats {
+            display: flex;
+            background: #f5f8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2c3e22;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            color: var(--matcha-dark);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2c3e22;
+            margin-bottom: 20px;
+        }
+
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid #e5ebdd;
+        }
+
+        .playlist-thumb {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--matcha-primary), var(--matcha-secondary));
+            margin-right: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 22px;
+        }
+
+        .playlist-details {
+            flex: 1;
+        }
+
+        .playlist-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #2c3e22;
+            font-size: 17px;
+        }
+
+        .playlist-count {
+            font-size: 15px;
+            color: var(--matcha-dark);
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            display: flex;
+            justify-content: space-around;
+            background: #fff;
+            border-top: 1px solid #e5ebdd;
+            padding: 14px 0;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #a1b88a;
+            font-size: 12px;
+            text-decoration: none;
+            transition: color 0.2s;
+            flex: 1;
+        }
+
+        .tab-item i {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .tab-item.active {
+            color: var(--matcha-primary);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .view-section {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* View switching */
+        .view-section {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .view-section.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-bar">
+            <div>9:41</div>
+            <div class="status-icons">
+                <i class="fas fa-signal"></i>
+                <i class="fas fa-wifi"></i>
+                <i class="fas fa-battery-three-quarters"></i>
+            </div>
+        </div>
+        
+        <div class="content">
+            <!-- Now Playing Screen -->
+            <section id="now-playing" class="view-section active">
+                <div class="header">
+                    <h1>Now Playing</h1>
+                    <div class="header-icons">
+                        <i class="fas fa-list"></i>
+                        <i class="fas fa-ellipsis-h"></i>
+                    </div>
+                </div>
+                
+                <div class="album-art-container">
+                    <div class="album-art">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffffff' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Album Art">
+                    </div>
+                </div>
+                
+                <div class="song-info">
+                    <h2 class="song-title">Matcha Morning</h2>
+                    <p class="artist-name">Green Harmony</p>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress"></div>
+                        <div class="progress-thumb"></div>
+                    </div>
+                    <div class="time-info">
+                        <span>2:15</span>
+                        <span>4:30</span>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="control-btn">
+                        <i class="fas fa-random"></i>
+                    </button>
+                    <button class="control-btn">
+                        <i class="fas fa-step-backward"></i>
+                    </button>
+                    <button class="control-btn play-btn">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button class="control-btn">
+                        <i class="fas fa-step-forward"></i>
+                    </button>
+                    <button class="control-btn">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                
+                <div class="volume-container">
+                    <i class="fas fa-volume-down volume-icon"></i>
+                    <div class="volume-bar">
+                        <div class="volume-level"></div>
+                    </div>
+                    <i class="fas fa-volume-up volume-icon"></i>
+                </div>
+                
+                <div class="extra-controls">
+                    <button class="extra-btn active">
+                        <i class="fas fa-music"></i>
+                    </button>
+                    <button class="extra-btn">
+                        <i class="fas fa-heart"></i>
+                    </button>
+                    <button class="extra-btn">
+                        <i class="fas fa-plus-circle"></i>
+                    </button>
+                    <button class="extra-btn">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                </div>
+            </section>
+            
+            <!-- Library Screen -->
+            <section id="library" class="view-section">
+                <div class="header">
+                    <h1>Library</h1>
+                    <div class="header-icons">
+                        <i class="fas fa-sort-amount-down"></i>
+                        <i class="fas fa-ellipsis-h"></i>
+                    </div>
+                </div>
+                
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search songs, artists, albums">
+                </div>
+                
+                <div class="song-list">
+                    <div class="song-item">
+                        <div class="song-thumb">1</div>
+                        <div class="song-details">
+                            <div class="list-song-title">Matcha Morning</div>
+                            <div class="list-artist-name">Green Harmony</div>
+                        </div>
+                        <div class="song-options">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="song-item">
+                        <div class="song-thumb">2</div>
+                        <div class="song-details">
+                            <div class="list-song-title">Bamboo Breeze</div>
+                            <div class="list-artist-name">Forest Ensemble</div>
+                        </div>
+                        <div class="song-options">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="song-item">
+                        <div class="song-thumb">3</div>
+                        <div class="song-details">
+                            <div class="list-song-title">Tea Leaves</div>
+                            <div class="list-artist-name">Zen Garden</div>
+                        </div>
+                        <div class="song-options">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="song-item">
+                        <div class="song-thumb">4</div>
+                        <div class="song-details">
+                            <div class="list-song-title">Ceremony</div>
+                            <div class="list-artist-name">Tea Masters</div>
+                        </div>
+                        <div class="song-options">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="song-item">
+                        <div class="song-thumb">5</div>
+                        <div class="song-details">
+                            <div class="list-song-title">Jade Serenity</div>
+                            <div class="list-artist-name">Mountain Sound</div>
+                        </div>
+                        <div class="song-options">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="song-item">
+                        <div class="song-thumb">6</div>
+                        <div class="song-details">
+                            <div class="list-song-title">Zen Garden</div>
+                            <div class="list-artist-name">Peaceful Mind</div>
+                        </div>
+                        <div class="song-options">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="song-item">
+                        <div class="song-thumb">7</div>
+                        <div class="song-details">
+                            <div class="list-song-title">Green Fields</div>
+                            <div class="list-artist-name">Nature's Voice</div>
+                        </div>
+                        <div class="song-options">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Browse Screen -->
+            <section id="browse" class="view-section">
+                <div class="header">
+                    <h1>Browse</h1>
+                    <div class="header-icons">
+                        <i class="fas fa-sliders-h"></i>
+                        <i class="fas fa-ellipsis-h"></i>
+                    </div>
+                </div>
+                
+                <div class="category-grid">
+                    <div class="category-card">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24'%3E%3Cpath fill='%238da860' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Chill">
+                        <div class="category-title">Chill Vibes</div>
+                    </div>
+                    <div class="category-card">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24'%3E%3Cpath fill='%235a7240' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Focus">
+                        <div class="category-title">Focus Flow</div>
+                    </div>
+                    <div class="category-card">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24'%3E%3Cpath fill='%239db86e' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Nature">
+                        <div class="category-title">Nature Sounds</div>
+                    </div>
+                    <div class="category-card">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24'%3E%3Cpath fill='%23a8c97f' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Meditation">
+                        <div class="category-title">Meditation</div>
+                    </div>
+                    <div class="category-card">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24'%3E%3Cpath fill='%237CA44A' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Wellness">
+                        <div class="category-title">Wellness</div>
+                    </div>
+                    <div class="category-card">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 24 24'%3E%3Cpath fill='%235A7240' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55c-2.21 0-4 1.79-4 4s1.79 4 4 4s4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Ambient">
+                        <div class="category-title">Ambient</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Search Screen -->
+            <section id="search" class="view-section">
+                <div class="header">
+                    <h1>Search</h1>
+                    <div class="header-icons">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                </div>
+                
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Artists, songs, or podcasts">
+                </div>
+                
+                <div class="search-header">Browse Categories</div>
+                
+                <div class="category-grid">
+                    <div class="category-card">
+                        <div class="category-title">Podcasts</div>
+                    </div>
+                    <div class="category-card">
+                        <div class="category-title">New Releases</div>
+                    </div>
+                </div>
+                
+                <div class="recent-searches">
+                    <div class="section-title">Recent Searches</div>
+                    <div class="search-item">
+                        <i class="fas fa-clock"></i>
+                        Green Harmony
+                    </div>
+                    <div class="search-item">
+                        <i class="fas fa-clock"></i>
+                        Nature Sounds
+                    </div>
+                    <div class="search-item">
+                        <i class="fas fa-clock"></i>
+                        Meditation Music
+                    </div>
+                    <div class="search-item">
+                        <i class="fas fa-clock"></i>
+                        Zen Garden
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Profile Screen -->
+            <section id="profile" class="view-section">
+                <div class="header">
+                    <h1>Profile</h1>
+                    <div class="header-icons">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                </div>
+                
+                <div class="profile-header">
+                    <div class="profile-pic">A</div>
+                    <div class="profile-info">
+                        <h2>Alex Morgan</h2>
+                        <p>Premium Member</p>
+                    </div>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value">142</div>
+                        <div class="stat-label">Songs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">18</div>
+                        <div class="stat-label">Playlists</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">32</div>
+                        <div class="stat-label">Artists</div>
+                    </div>
+                </div>
+                
+                <div class="section-title">Your Playlists</div>
+                
+                <div class="playlist-item">
+                    <div class="playlist-thumb">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <div class="playlist-details">
+                        <div class="playlist-name">Morning Matcha</div>
+                        <div class="playlist-count">24 songs</div>
+                    </div>
+                </div>
+                
+                <div class="playlist-item">
+                    <div class="playlist-thumb">
+                        <i class="fas fa-headphones"></i>
+                    </div>
+                    <div class="playlist-details">
+                        <div class="playlist-name">Focus Flow</div>
+                        <div class="playlist-count">18 songs</div>
+                    </div>
+                </div>
+                
+                <div class="playlist-item">
+                    <div class="playlist-thumb">
+                        <i class="fas fa-moon"></i>
+                    </div>
+                    <div class="playlist-details">
+                        <div class="playlist-name">Sleep Well</div>
+                        <div class="playlist-count">15 songs</div>
+                    </div>
+                </div>
+                
+                <div class="playlist-item">
+                    <div class="playlist-thumb">
+                        <i class="fas fa-tree"></i>
+                    </div>
+                    <div class="playlist-details">
+                        <div class="playlist-name">Nature Sounds</div>
+                        <div class="playlist-count">21 songs</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <a href="#" class="tab-item" data-view="library">
+                <i class="fas fa-book"></i>
+                <span>Library</span>
+            </a>
+            <a href="#" class="tab-item" data-view="browse">
+                <i class="fas fa-compass"></i>
+                <span>Browse</span>
+            </a>
+            <a href="#" class="tab-item active" data-view="now-playing">
+                <i class="fas fa-play-circle"></i>
+                <span>Now Playing</span>
+            </a>
+            <a href="#" class="tab-item" data-view="search">
+                <i class="fas fa-search"></i>
+                <span>Search</span>
+            </a>
+            <a href="#" class="tab-item" data-view="profile">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Tab navigation functionality
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab-item').forEach(t => {
+                    t.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Hide all views
+                document.querySelectorAll('.view-section').forEach(view => {
+                    view.classList.remove('active');
+                });
+                
+                // Show the selected view
+                const viewId = this.getAttribute('data-view');
+                document.getElementById(viewId).classList.add('active');
+            });
+        });
+        
+        // Play/Pause button toggle
+        const playBtn = document.querySelector('.play-btn');
+        playBtn.addEventListener('click', function() {
+            const icon = playBtn.querySelector('i');
+            if (icon.classList.contains('fa-play')) {
+                icon.classList.remove('fa-play');
+                icon.classList.add('fa-pause');
+            } else {
+                icon.classList.remove('fa-pause');
+                icon.classList.add('fa-play');
+            }
+        });
+    </script>
+</body>
+</html>

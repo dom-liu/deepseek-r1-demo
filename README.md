@@ -1,6 +1,6 @@
-# DeepSeek R1 Model 3D Scene Testing
+# DeepSeek R1 Web Development Demo 🌟
 
-This project demonstrates the capabilities of the DeepSeek R1 model in 3D web development. Through three different Three.js scenarios, we validate the model's performance in developing complex interactive 3D applications.
+This project demonstrates the capabilities of the DeepSeek R1 model in modern web development. Through multiple interactive scenarios including 3D applications and mobile UI prototypes, we validate the model's performance in developing complex web applications.
 
 ## 🚀 Test Scenarios
 
@@ -40,13 +40,36 @@ This project demonstrates the capabilities of the DeepSeek R1 model in 3D web de
 - Adjustable simulation speed control
 - Starry background and lighting effects
 
+### 4. iOS Music Player Prototype 🎵📱
+**File**: `ios-music-player-matcha.html`  
+
+![iOS Music Player](ios-music-player-matcha-screenshot.png)
+
+**Features**:
+- Native iOS-style interface design
+- Matcha green theme with modern aesthetics
+- Complete music player functionality
+- Multi-tab navigation (Library, Browse, Now Playing, Search, Profile)
+- Interactive controls and animations
+- Responsive mobile-first design
+
 ## 🛠️ Tech Stack
 
+**3D Applications**:
 - **Three.js**: 3D graphics rendering engine
 - **WebGL**: Hardware-accelerated graphics processing
 - **HTML5 Canvas**: Rendering surface
+
+**Mobile UI Prototypes**:
+- **CSS Grid & Flexbox**: Modern layout systems
+- **CSS Custom Properties**: Dynamic theming
+- **Font Awesome**: Icon library
+- **CSS Animations**: Smooth transitions and interactions
+
+**Common Technologies**:
 - **Modern CSS**: Responsive interface design
 - **JavaScript ES6+**: Interactive logic implementation
+- **HTML5**: Semantic markup
 
 ## 📊 Test Results
 
@@ -57,6 +80,8 @@ DeepSeek R1 model excels in the following aspects:
 ✅ **User Experience**: Beautiful interface design with smooth and natural interactions  
 ✅ **Performance Optimization**: Code is optimized for smooth execution  
 ✅ **Compatibility**: Supports modern browsers with responsive design  
+✅ **Mobile UI Design**: Pixel-perfect iOS-style interfaces with native feel  
+✅ **Design Systems**: Consistent theming and component architecture  
 
 ## 🎯 Usage Instructions
 
@@ -72,9 +97,14 @@ deepseek-r1-demo/
 ├── 3d-product-customizer.html          # Product customizer scene
 ├── 3d-art-gallery.html                 # Art gallery scene  
 ├── 3d-solar-system.html                # Solar system scene
+├── ios-music-player-matcha.html        # iOS music player prototype
 ├── 3d-product-customizer-screenshot.png # Product customizer screenshot
 ├── 3d-art-gallery-screenshot.png       # Art gallery screenshot
 ├── 3d-solar-system-screenshot.png      # Solar system screenshot
+├── ios-music-player-matcha-screenshot.png # iOS music player screenshot
+├── scenario-1-product-customizer.md    # Product customizer documentation
+├── scenario-2-art-gallery.md           # Art gallery documentation
+├── scenario-3-solar-system.md          # Solar system documentation
 ├── README.md                           # Project documentation
 └── LICENSE                             # Open source license
 ```
@@ -87,4 +117,4 @@ deepseek-r1-demo/
 
 ---
 
-*This project showcases the powerful capabilities of AI-assisted development in complex 3D web applications, providing valuable reference cases for future human-AI collaborative development.*
+*This project showcases the powerful capabilities of AI-assisted development in both complex 3D web applications and modern mobile UI prototypes, providing valuable reference cases for future human-AI collaborative development.*
