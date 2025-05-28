@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Customizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/draco_gltf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: white;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Canvas Container */
+        .viewer {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        #modelCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.5s;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Customization Panel */
+        .customization-panel {
+            width: 350px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .panel-section {
+            margin-bottom: 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+        }
+        
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+        
+        .panel-title {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel-title i {
+            font-size: 1.2rem;
+            color: #4dabf7;
+        }
+        
+        /* Part Selection */
+        .part-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .part-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        .part-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .part-btn.active {
+            background: #4dabf7;
+            border-color: #4dabf7;
+            box-shadow: 0 0 15px rgba(77, 171, 247, 0.5);
+        }
+        
+        /* Color Picker */
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .color-preview {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            border: 2px solid white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        /* Material Selector */
+        .material-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .material-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px 10px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .material-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .material-btn.active {
+            background: #4dabf7;
+            border-color: #4dabf7;
+            box-shadow: 0 0 15px rgba(77, 171, 247, 0.5);
+        }
+        
+        .material-icon {
+            font-size: 1.8rem;
+        }
+        
+        /* Accessories */
+        .accessory-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .accessory-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .accessory-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .accessory-item.active {
+            background: #20c997;
+            border-color: #20c997;
+            box-shadow: 0 0 15px rgba(32, 201, 151, 0.5);
+        }
+        
+        .accessory-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        /* Controls Info */
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+        }
+        
+        .controls-info div {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .controls-key {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .customization-panel {
+                width: 100%;
+            }
+            
+            .viewer {
+                height: 500px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .material-selector, .accessory-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .part-selector {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>3D Model Customizer</h1>
+        <p>Customize the appearance of your 3D model. Change colors, materials, and add accessories in real-time.</p>
+    </header>
+    
+    <div class="container">
+        <div class="viewer">
+            <div class="loading-overlay">
+                <div class="spinner"></div>
+            </div>
+            <canvas id="modelCanvas"></canvas>
+            <div class="controls-info">
+                <div><span class="controls-key">Left Click + Drag</span> Rotate View</div>
+                <div><span class="controls-key">Right Click + Drag</span> Pan View</div>
+                <div><span class="controls-key">Scroll Wheel</span> Zoom In/Out</div>
+            </div>
+        </div>
+        
+        <div class="customization-panel">
+            <div class="panel-section">
+                <h2 class="panel-title">Select Part</h2>
+                <div class="part-selector">
+                    <div class="part-btn active" data-part="body">Body</div>
+                    <div class="part-btn" data-part="wheels">Wheels</div>
+                    <div class="part-btn" data-part="windows">Windows</div>
+                    <div class="part-btn" data-part="seats">Seats</div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h2 class="panel-title">Color Customization</h2>
+                <div class="color-picker-container">
+                    <div class="color-preview" id="colorPreview" style="background-color: #ff3e3e;"></div>
+                    <input type="color" id="colorPicker" value="#ff3e3e">
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h2 class="panel-title">Material Type</h2>
+                <div class="material-selector">
+                    <div class="material-btn active" data-material="matte">
+                        <div class="material-icon">🧱</div>
+                        Matte
+                    </div>
+                    <div class="material-btn" data-material="metallic">
+                        <div class="material-icon">✨</div>
+                        Metallic
+                    </div>
+                    <div class="material-btn" data-material="glossy">
+                        <div class="material-icon">💎</div>
+                        Glossy
+                    </div>
+                    <div class="material-btn" data-material="fabric">
+                        <div class="material-icon">🧵</div>
+                        Fabric
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h2 class="panel-title">Accessories</h2>
+                <div class="accessory-grid">
+                    <div class="accessory-item" data-accessory="roofRack">
+                        <div class="accessory-icon">📦</div>
+                        Roof Rack
+                    </div>
+                    <div class="accessory-item" data-accessory="spoiler">
+                        <div class="accessory-icon">🏁</div>
+                        Spoiler
+                    </div>
+                    <div class="accessory-item" data-accessory="rims">
+                        <div class="accessory-icon">⚙️</div>
+                        Sport Rims
+                    </div>
+                    <div class="accessory-item" data-accessory="lights">
+                        <div class="accessory-icon">💡</div>
+                        LED Lights
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Main application
+        document.addEventListener('DOMContentLoaded', () => {
+            // Scene setup
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            // Camera setup
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 3, 7);
+            
+            // Renderer setup
+            const renderer = new THREE.WebGLRenderer({
+                canvas: document.getElementById('modelCanvas'),
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(document.querySelector('.viewer').offsetWidth, document.querySelector('.viewer').offsetHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 15);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Orbit controls
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 3;
+            controls.maxDistance = 15;
+            
+            // Model placeholder (we'll use a car-like object as a placeholder)
+            function createPlaceholderModel() {
+                const group = new THREE.Group();
+                
+                // Car body
+                const bodyGeometry = new THREE.BoxGeometry(3, 1, 1.5);
+                const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xff3e3e,
+                    roughness: 0.7,
+                    metalness: 0.2
+                });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 0.5;
+                body.name = "body";
+                group.add(body);
+                
+                // Top part
+                const topGeometry = new THREE.BoxGeometry(1.8, 0.8, 1.2);
+                const topMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xff3e3e,
+                    roughness: 0.7,
+                    metalness: 0.2
+                });
+                const top = new THREE.Mesh(topGeometry, topMaterial);
+                top.position.set(0, 1.2, 0);
+                top.name = "top";
+                group.add(top);
+                
+                // Windows
+                const windowGeometry = new THREE.BoxGeometry(1.6, 0.6, 1.1);
+                const windowMaterial = new THREE.MeshPhysicalMaterial({ 
+                    color: 0x7ec0ee,
+                    roughness: 0.1,
+                    metalness: 0.9,
+                    transmission: 0.9,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const window = new THREE.Mesh(windowGeometry, windowMaterial);
+                window.position.set(0, 1.2, 0);
+                window.name = "windows";
+                group.add(window);
+                
+                // Wheels
+                const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 32);
+                wheelGeometry.rotateZ(Math.PI/2);
+                const wheelMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x333333,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                
+                const wheelPositions = [
+                    [1.2, 0.4, 0.8],
+                    [1.2, 0.4, -0.8],
+                    [-1.2, 0.4, 0.8],
+                    [-1.2, 0.4, -0.8]
+                ];
+                
+                wheelPositions.forEach((pos, i) => {
+                    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                    wheel.position.set(pos[0], pos[1], pos[2]);
+                    wheel.name = `wheel_${i+1}`;
+                    group.add(wheel);
+                });
+                
+                // Seats
+                const seatGeometry = new THREE.BoxGeometry(0.6, 0.3, 0.8);
+                const seatMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x444444,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                
+                const seat1 = new THREE.Mesh(seatGeometry, seatMaterial);
+                seat1.position.set(0.4, 0.85, 0);
+                seat1.name = "seat_1";
+                group.add(seat1);
+                
+                const seat2 = new THREE.Mesh(seatGeometry, seatMaterial);
+                seat2.position.set(-0.4, 0.85, 0);
+                seat2.name = "seat_2";
+                group.add(seat2);
+                
+                scene.add(group);
+                return group;
+            }
+            
+            // Create accessories
+            function createAccessories() {
+                const accessories = {};
+                
+                // Roof rack
+                const roofRack = new THREE.Group();
+                const rackBarGeometry = new THREE.BoxGeometry(2.2, 0.05, 0.05);
+                const rackBarMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+                
+                const bar1 = new THREE.Mesh(rackBarGeometry, rackBarMaterial);
+                bar1.position.set(0, 1.8, 0.5);
+                roofRack.add(bar1);
+                
+                const bar2 = new THREE.Mesh(rackBarGeometry, rackBarMaterial);
+                bar2.position.set(0, 1.8, -0.5);
+                roofRack.add(bar2);
+                
+                const crossBarGeometry = new THREE.BoxGeometry(0.05, 0.05, 1.0);
+                const crossBarMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+                
+                for (let i = -1; i <= 1; i += 1) {
+                    const crossBar = new THREE.Mesh(crossBarGeometry, crossBarMaterial);
+                    crossBar.position.set(i * 0.7, 1.8, 0);
+                    roofRack.add(crossBar);
+                }
+                
+                roofRack.visible = false;
+                roofRack.name = "roofRack";
+                scene.add(roofRack);
+                accessories.roofRack = roofRack;
+                
+                // Spoiler
+                const spoiler = new THREE.Group();
+                const spoilerBaseGeometry = new THREE.BoxGeometry(1.2, 0.1, 0.4);
+                const spoilerBaseMaterial = new THREE.MeshStandardMaterial({ color: 0xff3e3e });
+                const spoilerBase = new THREE.Mesh(spoilerBaseGeometry, spoilerBaseMaterial);
+                spoilerBase.position.set(0, 1.0, -1.0);
+                spoiler.add(spoilerBase);
+                
+                const spoilerSupportGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+                const spoilerSupportMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+                
+                const support1 = new THREE.Mesh(spoilerSupportGeometry, spoilerSupportMaterial);
+                support1.position.set(0.5, 0.7, -1.0);
+                spoiler.add(support1);
+                
+                const support2 = new THREE.Mesh(spoilerSupportGeometry, spoilerSupportMaterial);
+                support2.position.set(-0.5, 0.7, -1.0);
+                spoiler.add(support2);
+                
+                const spoilerWingGeometry = new THREE.BoxGeometry(1.4, 0.1, 0.8);
+                const spoilerWingMaterial = new THREE.MeshStandardMaterial({ color: 0xff3e3e });
+                const spoilerWing = new THREE.Mesh(spoilerWingGeometry, spoilerWingMaterial);
+                spoilerWing.position.set(0, 0.9, -1.0);
+                spoilerWing.rotation.x = Math.PI / 6;
+                spoiler.add(spoilerWing);
+                
+                spoiler.visible = false;
+                spoiler.name = "spoiler";
+                scene.add(spoiler);
+                accessories.spoiler = spoiler;
+                
+                // Sport rims
+                const rims = new THREE.Group();
+                const rimPositions = [
+                    [1.2, 0.4, 0.8],
+                    [1.2, 0.4, -0.8],
+                    [-1.2, 0.4, 0.8],
+                    [-1.2, 0.4, -0.8]
+                ];
+                
+                rimPositions.forEach(pos => {
+                    const rimGeometry = new THREE.TorusGeometry(0.3, 0.08, 16, 32);
+                    const rimMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0xffcc00,
+                        roughness: 0.2,
+                        metalness: 0.9
+                    });
+                    const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+                    rim.position.set(pos[0], pos[1], pos[2]);
+                    rim.rotation.x = Math.PI/2;
+                    rims.add(rim);
+                });
+                
+                rims.visible = false;
+                rims.name = "rims";
+                scene.add(rims);
+                accessories.rims = rims;
+                
+                // LED lights
+                const lights = new THREE.Group();
+                const lightGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.1);
+                const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                
+                const frontLight1 = new THREE.Mesh(lightGeometry, lightMaterial);
+                frontLight1.position.set(1.6, 0.7, 0.4);
+                lights.add(frontLight1);
+                
+                const frontLight2 = new THREE.Mesh(lightGeometry, lightMaterial);
+                frontLight2.position.set(1.6, 0.7, -0.4);
+                lights.add(frontLight2);
+                
+                const rearLightGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.1);
+                const rearLightMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                
+                const rearLight1 = new THREE.Mesh(rearLightGeometry, rearLightMaterial);
+                rearLight1.position.set(-1.6, 0.7, 0.4);
+                lights.add(rearLight1);
+                
+                const rearLight2 = new THREE.Mesh(rearLightGeometry, rearLightMaterial);
+                rearLight2.position.set(-1.6, 0.7, -0.4);
+                lights.add(rearLight2);
+                
+                lights.visible = false;
+                lights.name = "lights";
+                scene.add(lights);
+                accessories.lights = lights;
+                
+                return accessories;
+            }
+            
+            // Initialize the scene
+            const carModel = createPlaceholderModel();
+            const accessories = createAccessories();
+            
+            // Hide loading overlay
+            setTimeout(() => {
+                document.querySelector('.loading-overlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.querySelector('.loading-overlay').style.display = 'none';
+                }, 500);
+            }, 1500);
+            
+            // UI Interactions
+            let selectedPart = "body";
+            let selectedMaterial = "matte";
+            
+            // Part selection
+            document.querySelectorAll('.part-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.part-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedPart = btn.dataset.part;
+                    
+                    // Update color preview to match selected part
+                    let color = "#ff3e3e";
+                    
+                    if (selectedPart === "wheels") {
+                        color = "#333333";
+                    } else if (selectedPart === "windows") {
+                        color = "#7ec0ee";
+                    } else if (selectedPart === "seats") {
+                        color = "#444444";
+                    }
+                    
+                    document.getElementById('colorPicker').value = color;
+                    document.getElementById('colorPreview').style.backgroundColor = color;
+                });
+            });
+            
+            // Color picker
+            const colorPicker = document.getElementById('colorPicker');
+            const colorPreview = document.getElementById('colorPreview');
+            
+            colorPicker.addEventListener('input', () => {
+                const color = colorPicker.value;
+                colorPreview.style.backgroundColor = color;
+                
+                // Apply color to selected part
+                applyColorToPart(selectedPart, color);
+            });
+            
+            function applyColorToPart(part, color) {
+                const hexColor = new THREE.Color(color);
+                
+                scene.traverse(object => {
+                    if (object.isMesh) {
+                        if (part === "body" && (object.name === "body" || object.name === "top")) {
+                            object.material.color.copy(hexColor);
+                        } else if (object.name.includes(part)) {
+                            object.material.color.copy(hexColor);
+                        }
+                    }
+                });
+            }
+            
+            // Material selection
+            document.querySelectorAll('.material-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedMaterial = btn.dataset.material;
+                    
+                    applyMaterialToPart(selectedPart, selectedMaterial);
+                });
+            });
+            
+            function applyMaterialToPart(part, materialType) {
+                scene.traverse(object => {
+                    if (object.isMesh) {
+                        if (part === "body" && (object.name === "body" || object.name === "top")) {
+                            updateMaterial(object, materialType);
+                        } else if (object.name.includes(part)) {
+                            updateMaterial(object, materialType);
+                        }
+                    }
+                });
+            }
+            
+            function updateMaterial(mesh, materialType) {
+                const currentColor = mesh.material.color.clone();
+                
+                switch(materialType) {
+                    case "matte":
+                        mesh.material.roughness = 0.7;
+                        mesh.material.metalness = 0.2;
+                        break;
+                    case "metallic":
+                        mesh.material.roughness = 0.2;
+                        mesh.material.metalness = 0.9;
+                        break;
+                    case "glossy":
+                        mesh.material.roughness = 0.1;
+                        mesh.material.metalness = 0.5;
+                        break;
+                    case "fabric":
+                        mesh.material.roughness = 0.9;
+                        mesh.material.metalness = 0.1;
+                        break;
+                }
+                
+                mesh.material.needsUpdate = true;
+            }
+            
+            // Accessories
+            document.querySelectorAll('.accessory-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    item.classList.toggle('active');
+                    const accessoryName = item.dataset.accessory;
+                    accessories[accessoryName].visible = !accessories[accessoryName].visible;
+                });
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = document.querySelector('.viewer').offsetWidth / document.querySelector('.viewer').offsetHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(document.querySelector('.viewer').offsetWidth, document.querySelector('.viewer').offsetHeight);
+            });
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                
+                // Rotate wheels if present
+                scene.traverse(object => {
+                    if (object.name.includes('wheel')) {
+                        object.rotation.z += 0.01;
+                    }
+                });
+                
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+        });
+    </script>
+</body>
+</html>

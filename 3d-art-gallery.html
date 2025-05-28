@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural 3D Art Gallery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #e6e6e6;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        header {
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.7);
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 2rem;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            pointer-events: auto;
+        }
+        
+        .btn {
+            background: rgba(25, 40, 65, 0.7);
+            color: #e6e6e6;
+            border: 1px solid rgba(0, 200, 255, 0.3);
+            padding: 0.8rem 1.8rem;
+            font-size: 1.1rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+        
+        .btn:hover {
+            background: rgba(0, 150, 200, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 150, 200, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .art-info {
+            position: absolute;
+            bottom: 6rem;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 1.2rem;
+            opacity: 0.9;
+            animation: fadeIn 1s ease;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            color: #00c8ff;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .loading.show {
+            opacity: 1;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(0, 200, 255, 0.3);
+            border-top: 4px solid #00c8ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="overlay">
+        <header>
+            <h1>PROCEDURAL 3D ART GALLERY</h1>
+            <p class="subtitle">Each artwork is uniquely generated using mathematical algorithms. Click "New Artwork" to experience a new abstract creation.</p>
+        </header>
+        
+        <div class="art-info">
+            <div id="art-title">Quantum Resonance #001</div>
+        </div>
+        
+        <div class="controls">
+            <button id="new-art-btn" class="btn">New Artwork</button>
+            <button id="auto-rotate-btn" class="btn">Auto-Rotate: ON</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            Generating new artwork...
+        </div>
+        
+        <footer>
+            Procedural 3D Gallery | Three.js
+        </footer>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    
+    <script>
+        // Main variables
+        let scene, camera, renderer, controls;
+        let currentArtwork = null;
+        let autoRotate = true;
+        let directionalLights = [];
+        let pointLights = [];
+        let spotLights = [];
+        
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+            scene.fog = new THREE.Fog(0x0a0a1a, 15, 30);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 8);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 3;
+            controls.maxDistance = 20;
+            controls.autoRotate = autoRotate;
+            controls.autoRotateSpeed = 0.5;
+            
+            // Setup lighting
+            setupLighting();
+            
+            // Create gallery environment
+            createGalleryEnvironment();
+            
+            // Generate initial artwork
+            generateNewArtwork();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Setup UI event listeners
+            document.getElementById('new-art-btn').addEventListener('click', generateNewArtwork);
+            document.getElementById('auto-rotate-btn').addEventListener('click', toggleAutoRotate);
+            
+            // Start animation loop
+            animate();
+        }
+        
+        // Set up lighting for the gallery
+        function setupLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+            scene.add(ambientLight);
+            
+            // Directional lights
+            for (let i = 0; i < 3; i++) {
+                const color = new THREE.Color(Math.random() * 0.5 + 0.5, Math.random() * 0.5 + 0.5, Math.random() * 0.5 + 0.5);
+                const light = new THREE.DirectionalLight(color, 0.6);
+                light.position.set(
+                    Math.sin(i * 2.09) * 10,
+                    5,
+                    Math.cos(i * 2.09) * 10
+                );
+                light.castShadow = true;
+                light.shadow.mapSize.width = 1024;
+                light.shadow.mapSize.height = 1024;
+                scene.add(light);
+                directionalLights.push(light);
+            }
+            
+            // Point lights
+            for (let i = 0; i < 4; i++) {
+                const color = new THREE.Color(
+                    Math.random() * 0.7 + 0.3,
+                    Math.random() * 0.7 + 0.3,
+                    Math.random() * 0.7 + 0.3
+                );
+                const light = new THREE.PointLight(color, 1.2, 15, 1);
+                light.position.set(
+                    Math.random() * 8 - 4,
+                    Math.random() * 3 + 1,
+                    Math.random() * 8 - 4
+                );
+                scene.add(light);
+                pointLights.push(light);
+                
+                // Add light helper
+                const sphere = new THREE.SphereGeometry(0.1, 16, 16);
+                const material = new THREE.MeshBasicMaterial({ color: color });
+                const helper = new THREE.Mesh(sphere, material);
+                helper.position.copy(light.position);
+                scene.add(helper);
+            }
+            
+            // Spotlight for artwork
+            const spotLight = new THREE.SpotLight(0xffffff, 1.5, 20, Math.PI / 6, 0.2, 0.5);
+            spotLight.position.set(0, 8, 0);
+            spotLight.target.position.set(0, 0, 0);
+            scene.add(spotLight);
+            scene.add(spotLight.target);
+            spotLights.push(spotLight);
+        }
+        
+        // Create gallery environment
+        function createGalleryEnvironment() {
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(30, 30);
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1a1a2e,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -0.5;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(30, 30, 0x3d3d5c, 0x2a2a4a);
+            gridHelper.position.y = -0.49;
+            scene.add(gridHelper);
+            
+            // Walls
+            const wallMaterial = new THREE.MeshStandardMaterial({
+                color: 0x0f0f1f,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            
+            // Back wall
+            const backWall = new THREE.Mesh(
+                new THREE.BoxGeometry(30, 10, 0.5),
+                wallMaterial
+            );
+            backWall.position.z = -15;
+            backWall.position.y = 4;
+            backWall.receiveShadow = true;
+            scene.add(backWall);
+        }
+        
+        // Generate a new procedural artwork
+        function generateNewArtwork() {
+            // Show loading indicator
+            const loading = document.getElementById('loading');
+            loading.classList.add('show');
+            
+            // Remove previous artwork after a delay
+            if (currentArtwork) {
+                setTimeout(() => {
+                    scene.remove(currentArtwork);
+                    currentArtwork = null;
+                    createArtwork();
+                }, 300);
+            } else {
+                createArtwork();
+            }
+        }
+        
+        // Create a new artwork
+        function createArtwork() {
+            // Create a group for the artwork
+            const artwork = new THREE.Group();
+            
+            // Select a random art style
+            const style = Math.floor(Math.random() * 4);
+            
+            // Generate the artwork
+            switch(style) {
+                case 0:
+                    createFractalStructure(artwork);
+                    break;
+                case 1:
+                    createOrganicShape(artwork);
+                    break;
+                case 2:
+                    createGeometricComposition(artwork);
+                    break;
+                case 3:
+                    createCrystalFormation(artwork);
+                    break;
+            }
+            
+            // Position at the center
+            artwork.position.y = 1;
+            
+            // Add to scene
+            scene.add(artwork);
+            currentArtwork = artwork;
+            
+            // Animate camera to new position
+            animateCamera();
+            
+            // Update art title
+            const titles = [
+                "Quantum Resonance",
+                "Neural Oscillation",
+                "Fractal Dimension",
+                "Crystalline Matrix",
+                "Bio-Luminous Form",
+                "Chromatic Field",
+                "Tesseract Fragment",
+                "Harmonic Convergence",
+                "Synaptic Cascade",
+                "Prism Spectrum"
+            ];
+            
+            const title = titles[Math.floor(Math.random() * titles.length)];
+            const id = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            document.getElementById('art-title').textContent = `${title} #${id}`;
+            
+            // Hide loading after a delay
+            setTimeout(() => {
+                document.getElementById('loading').classList.remove('show');
+            }, 800);
+        }
+        
+        // Create fractal structure
+        function createFractalStructure(group) {
+            const depth = 4;
+            const scaleFactor = 0.6;
+            
+            function createBranch(parent, depth, scale, position) {
+                if (depth === 0) return;
+                
+                const geometry = new THREE.IcosahedronGeometry(scale, 1);
+                const material = new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+                    metalness: Math.random() * 0.8,
+                    roughness: Math.random() * 0.3,
+                    clearcoat: 0.5,
+                    clearcoatRoughness: 0.2,
+                    transmission: 0.5,
+                    opacity: 0.9,
+                    transparent: true
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.copy(position);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                parent.add(mesh);
+                
+                if (depth > 1) {
+                    const branches = 3 + Math.floor(Math.random() * 4);
+                    for (let i = 0; i < branches; i++) {
+                        const angle = (i / branches) * Math.PI * 2;
+                        const distance = scale * 1.8;
+                        const newPos = new THREE.Vector3(
+                            Math.cos(angle) * distance,
+                            Math.sin(angle) * 0.5,
+                            Math.sin(angle) * distance
+                        );
+                        createBranch(mesh, depth - 1, scale * scaleFactor, newPos);
+                    }
+                }
+            }
+            
+            createBranch(group, depth, 1, new THREE.Vector3(0, 0, 0));
+        }
+        
+        // Create organic shape
+        function createOrganicShape(group) {
+            const segments = 24;
+            const geometry = new THREE.SphereGeometry(1.5, segments, segments);
+            
+            // Modify vertices to create organic shape
+            const positionAttribute = geometry.attributes.position;
+            const vertex = new THREE.Vector3();
+            
+            for (let i = 0; i < positionAttribute.count; i++) {
+                vertex.fromBufferAttribute(positionAttribute, i);
+                
+                // Apply noise for organic appearance
+                const noise = 0.3 * Math.sin(vertex.x * 3) * 
+                             Math.cos(vertex.y * 4) * 
+                             Math.sin(vertex.z * 2.5);
+                
+                vertex.multiplyScalar(1 + noise * 0.5);
+                
+                positionAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z);
+            }
+            
+            geometry.computeVertexNormals();
+            
+            const material = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(Math.random() * 0.5 + 0.3, Math.random() * 0.5 + 0.3, Math.random() * 0.5 + 0.3),
+                metalness: 0.1,
+                roughness: 0.2,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.1,
+                sheen: 0.5,
+                transmission: 0.8,
+                opacity: 0.95,
+                transparent: true
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            
+            group.add(mesh);
+            
+            // Add internal structure
+            const innerGeometry = new THREE.IcosahedronGeometry(1, 1);
+            const innerMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                wireframe: true
+            });
+            
+            const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
+            innerMesh.scale.set(0.9, 0.9, 0.9);
+            group.add(innerMesh);
+        }
+        
+        // Create geometric composition
+        function createGeometricComposition(group) {
+            const elements = 8 + Math.floor(Math.random() * 8);
+            const baseScale = 1.5;
+            
+            for (let i = 0; i < elements; i++) {
+                const shapeType = Math.floor(Math.random() * 4);
+                let geometry;
+                
+                switch(shapeType) {
+                    case 0:
+                        geometry = new THREE.BoxGeometry(1, 1, 1);
+                        break;
+                    case 1:
+                        geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 12);
+                        break;
+                    case 2:
+                        geometry = new THREE.ConeGeometry(0.7, 1.5, 12);
+                        break;
+                    case 3:
+                        geometry = new THREE.TorusKnotGeometry(0.5, 0.2, 64, 12, 2, 3);
+                        break;
+                }
+                
+                const material = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color(
+                        Math.random() * 0.7 + 0.3,
+                        Math.random() * 0.7 + 0.3,
+                        Math.random() * 0.7 + 0.3
+                    ),
+                    metalness: Math.random(),
+                    roughness: Math.random() * 0.5,
+                    emissive: new THREE.Color(Math.random() * 0.1, Math.random() * 0.1, Math.random() * 0.1)
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                // Position and scale
+                const angle = (i / elements) * Math.PI * 2;
+                const radius = baseScale * (0.8 + Math.random() * 0.4);
+                const height = Math.random() * 2;
+                
+                mesh.position.set(
+                    Math.cos(angle) * radius,
+                    height - 1,
+                    Math.sin(angle) * radius
+                );
+                
+                mesh.scale.set(
+                    0.5 + Math.random() * 0.5,
+                    0.5 + Math.random() * 1.5,
+                    0.5 + Math.random() * 0.5
+                );
+                
+                mesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                
+                group.add(mesh);
+            }
+        }
+        
+        // Create crystal formation
+        function createCrystalFormation(group) {
+            const crystals = 12 + Math.floor(Math.random() * 10);
+            const baseRadius = 1.8;
+            
+            for (let i = 0; i < crystals; i++) {
+                const height = 0.5 + Math.random() * 2;
+                const radius = 0.1 + Math.random() * 0.3;
+                const sides = 4 + Math.floor(Math.random() * 3);
+                
+                const geometry = new THREE.ConeGeometry(radius, height, sides, 1, true);
+                
+                // Rotate vertices to create sharp crystals
+                const positionAttribute = geometry.attributes.position;
+                for (let j = 0; j < positionAttribute.count; j++) {
+                    if (positionAttribute.getY(j) > 0) {
+                        positionAttribute.setY(j, height);
+                    }
+                }
+                
+                geometry.computeVertexNormals();
+                
+                const material = new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color(
+                        Math.random() * 0.3 + 0.7,
+                        Math.random() * 0.3 + 0.7,
+                        Math.random() * 0.3 + 0.7
+                    ),
+                    metalness: 0.2,
+                    roughness: 0.1,
+                    clearcoat: 0.9,
+                    clearcoatRoughness: 0.05,
+                    transmission: 0.8,
+                    opacity: 0.95,
+                    transparent: true,
+                    ior: 1.5
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                // Position
+                const angle = (i / crystals) * Math.PI * 2;
+                const distance = baseRadius * (0.5 + Math.random() * 0.5);
+                
+                mesh.position.set(
+                    Math.cos(angle) * distance,
+                    height / 2 - 1,
+                    Math.sin(angle) * distance
+                );
+                
+                // Rotation
+                mesh.rotation.x = Math.random() * Math.PI;
+                mesh.rotation.y = Math.random() * Math.PI;
+                mesh.rotation.z = Math.random() * Math.PI;
+                
+                // Point toward center
+                mesh.lookAt(0, mesh.position.y, 0);
+                
+                group.add(mesh);
+            }
+            
+            // Add central crystal
+            const centralGeometry = new THREE.CylinderGeometry(0.6, 0.8, 2.5, 6);
+            const centralMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                emissive: new THREE.Color(0.2, 0.3, 0.8),
+                metalness: 0.1,
+                roughness: 0.05,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.05,
+                transmission: 0.9,
+                opacity: 0.95,
+                transparent: true
+            });
+            
+            const centralMesh = new THREE.Mesh(centralGeometry, centralMaterial);
+            centralMesh.position.y = 0.25;
+            centralMesh.castShadow = true;
+            centralMesh.receiveShadow = true;
+            group.add(centralMesh);
+        }
+        
+        // Animate camera for new artwork
+        function animateCamera() {
+            // Reset auto-rotate
+            controls.autoRotate = autoRotate;
+            
+            // Move camera to a new position
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 7 + Math.random() * 3;
+            const height = 1.5 + Math.random() * 2;
+            
+            camera.position.set(
+                Math.cos(angle) * distance,
+                height,
+                Math.sin(angle) * distance
+            );
+            
+            // Look at the artwork
+            controls.target.set(0, 1, 0);
+        }
+        
+        // Toggle auto-rotate
+        function toggleAutoRotate() {
+            autoRotate = !autoRotate;
+            controls.autoRotate = autoRotate;
+            document.getElementById('auto-rotate-btn').textContent = 
+                `Auto-Rotate: ${autoRotate ? 'ON' : 'OFF'}`;
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+            
+            // Animate lights
+            const time = Date.now() * 0.001;
+            
+            // Animate point lights
+            pointLights.forEach((light, i) => {
+                light.position.x = Math.sin(time * 0.2 + i * 1.5) * 3;
+                light.position.z = Math.cos(time * 0.3 + i * 1.2) * 3;
+                light.position.y = 1.5 + Math.sin(time * 0.4 + i) * 0.5;
+            });
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
